@@ -1,0 +1,119 @@
+import { fileURLToPath } from 'node:url'; // Added for .gitignore path
+import { includeIgnoreFile } from '@eslint/compat'; // Added for .gitignore
+import feedicFlatConfig from '@feedic/eslint-config';
+import { commonTypeScriptRules } from '@feedic/eslint-config/typescript';
+import eslintPluginVitest from '@vitest/eslint-plugin';
+import { defineConfig } from 'eslint/config';
+import eslintConfigBiome from 'eslint-config-biome';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+const gitignorePath = fileURLToPath(new URL('.gitignore', import.meta.url));
+
+export default defineConfig(
+  includeIgnoreFile(gitignorePath), // Handle .gitignore patterns
+
+  // Global linter options
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error',
+    },
+  },
+
+  // Base configurations for all relevant files
+  ...feedicFlatConfig,
+
+  {
+    rules: {
+      'jsdoc/tag-lines': [2, 'any', { startLines: 1 }],
+      'jsdoc/require-param-type': 0,
+      'jsdoc/require-returns-type': 0,
+      'jsdoc/no-types': 2,
+      'jsdoc/require-returns-check': 0,
+      'jsdoc/check-tag-names': [
+        2,
+        {
+          definedTags: ['private'],
+        },
+      ],
+    },
+  },
+
+  // Global custom rules and language options
+  {
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['*.js'],
+          defaultProject: 'tsconfig.json',
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      'n/file-extension-in-import': [2, 'always'],
+      'no-lonely-if': 2,
+      'no-proto': 2,
+      'no-else-return': [2, { allowElseIf: false }],
+      'no-unused-expressions': 2,
+      'no-useless-call': 2,
+      'no-constant-binary-expression': 2,
+      'no-void': 2,
+      'unicorn/no-array-callback-reference': 0,
+      'unicorn/no-array-reduce': 0,
+      'unicorn/no-for-loop': 0,
+      'unicorn/no-useless-undefined': 0,
+      'unicorn/prefer-array-find': 0,
+      'unicorn/prevent-abbreviations': 0,
+    },
+  },
+
+  // TypeScript specific configurations
+  {
+    // Custom overrides and settings for TypeScript files
+    files: ['**/*.{c,m,}ts', '**/*.tsx'], // Ensure this block specifically targets TS files
+    extends: [
+      ...tseslint.configs.recommendedTypeChecked,
+      ...tseslint.configs.stylisticTypeChecked,
+    ],
+    languageOptions: {
+      parser: tseslint.parser,
+    },
+    rules: {
+      ...commonTypeScriptRules,
+      // Enabling this in cheerio currently triggers broad churn across src + website.
+      '@typescript-eslint/no-unnecessary-condition': 0,
+    },
+  },
+
+  // Vitest specific configuration (for *.spec.ts files)
+  {
+    files: ['**/*.spec.ts'],
+    plugins: { vitest: eslintPluginVitest },
+    languageOptions: {
+      globals: globals.vitest, // Add Vitest globals
+    },
+    rules: {
+      // Assuming "recommended" is the flat config equivalent for "legacy-recommended"
+      ...eslintPluginVitest.configs.recommended.rules,
+      'n/no-unpublished-import': 0, // Allow importing devDependencies
+    },
+  },
+
+  // Website specific configuration
+  {
+    files: ['website/**/*.{m,}ts{x,}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['*.mjs'],
+        },
+        tsconfigRootDir: `${import.meta.dirname}/website`,
+      },
+    },
+  },
+
+  // Prettier - must be the last configuration to override styling rules
+  eslintConfigBiome,
+);
